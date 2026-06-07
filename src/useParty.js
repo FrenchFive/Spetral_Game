@@ -32,6 +32,17 @@ const saveName = (n) => { try { localStorage.setItem("spectra_name", n); } catch
 
 const connectedPlayers = (room) => room.players.filter((p) => p.connected);
 
+// guarantee a name not already used by another player in the room (case-insensitive),
+// appending " (2)", " (3)", … on collision. Excludes the player's own pid (reconnect).
+function uniqueName(room, desired, selfPid) {
+  const base = (desired || "").trim().slice(0, 16) || "Player";
+  const taken = new Set(room.players.filter((p) => p.pid !== selfPid).map((p) => p.name.toLowerCase()));
+  if (!taken.has(base.toLowerCase())) return base;
+  let n = 2;
+  while (taken.has(`${base} (${n})`.toLowerCase())) n++;
+  return `${base} (${n})`;
+}
+
 // rotate master to the next connected player after the current one
 function nextMasterId(room) {
   const conn = connectedPlayers(room);
@@ -44,6 +55,7 @@ export function useParty() {
   const [room, setRoom] = useState(null);     // public state, mirrored on every device
   const [status, setStatus] = useState("idle"); // idle | connecting | connected
   const [error, setError] = useState(null);
+  const [secretTarget, setSecretTarget] = useState(null); // master-only, drives the spin render
 
   const myPid = useRef(persistentPid()).current;
   const roomRef = useRef(null);          // host's authoritative copy
@@ -77,9 +89,9 @@ export function useParty() {
     switch (type) {
       case "hello": {
         const ex = r.players.find((p) => p.pid === payload.pid);
-        if (ex) { ex.connected = true; ex.peerId = from; if (payload.name) ex.name = payload.name; }
+        if (ex) { ex.connected = true; ex.peerId = from; if (payload.name) ex.name = uniqueName(r, payload.name, payload.pid); }
         else if (r.players.length < 8) {
-          r.players.push({ pid: payload.pid, name: payload.name || "Player", score: 0, connected: true, peerId: from });
+          r.players.push({ pid: payload.pid, name: uniqueName(r, payload.name || "Player", payload.pid), score: 0, connected: true, peerId: from });
         } else return; // room full
         broadcast();
         break;
@@ -224,12 +236,17 @@ export function useParty() {
 
   // ---- master-only secret target lifecycle ----
   const amMaster = room && room.masterId === myPid;
-  // generate the secret when this device becomes master and the spin begins
+  // clear the secret whenever the round turns over (or we're no longer master)
+  useEffect(() => { setSecretTarget(null); }, [room?.round, amMaster]);
+  // generate the secret when this device becomes master and the spin begins.
+  // Stored in BOTH a ref (for revealNow scoring) and state (so the spin re-renders).
   useEffect(() => {
     if (!room) return;
-    if (amMaster && (room.status === "spin") && targetRef.current.round !== room.round) {
-      targetRef.current = { round: room.round, value: newTarget() };
+    if (amMaster && room.status === "spin" && targetRef.current.round !== room.round) {
+      const value = newTarget();
+      targetRef.current = { round: room.round, value };
       guessRef.current = { round: room.round, byPid: {} };
+      setSecretTarget(value);
     }
   }, [room?.status, room?.round, amMaster]);
 
@@ -280,7 +297,7 @@ export function useParty() {
     room, status, error, myPid, selfId,
     isHost: room ? room.hostPid === myPid : false,
     amMaster: !!amMaster,
-    secretTarget: amMaster && targetRef.current.round === (room && room.round) ? targetRef.current.value : null,
+    secretTarget: amMaster ? secretTarget : null,
     localLocked: guessRef.current.byPid ? Object.keys(guessRef.current.byPid).length : 0,
     savedName,
     create, createWithCode, join, leave,

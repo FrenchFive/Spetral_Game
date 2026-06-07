@@ -27,8 +27,6 @@ const browser = await chromium.launch();
   log("✓ local: started game, theme vote shown");
 
   await page.click("text=Play this round");
-  await page.waitForTimeout(500);
-  log("after play-this-round, body text:", (await page.locator("body").innerText()).replace(/\n+/g, " | ").slice(0, 200));
   await page.click("button:has-text('Tap when ready')"); // master handoff
   await page.waitForSelector("text=secret target", { timeout: 6000 });
   await page.fill("input[placeholder='Type a word or phrase…']", "test clue");
@@ -53,7 +51,7 @@ try {
 
   await host.goto(BASE, { waitUntil: "networkidle" });
   await host.click("text=Play online");
-  await host.fill("input[placeholder='e.g. Five']", "Host");
+  await host.fill("input[placeholder='e.g. Five']", "Sam");
   await host.click("text=Create a party");
 
   // read the 4-char code from the lobby
@@ -64,13 +62,13 @@ try {
 
   await guest.goto(BASE, { waitUntil: "networkidle" });
   await guest.click("text=Play online");
-  await guest.fill("input[placeholder='e.g. Five']", "Guest");
+  await guest.fill("input[placeholder='e.g. Five']", "Sam"); // same name as host on purpose
   await guest.fill("input[placeholder='CODE']", code);
   await guest.click("button:has-text('Join')");
 
-  // host should see Guest appear in the lobby (proves P2P sync)
-  await host.waitForSelector("text=Guest", { timeout: 25000 });
-  log("✓ online: guest joined and synced to host lobby");
+  // host should see the joiner appear — with a de-duplicated name (proves P2P sync + unique names)
+  await host.waitForSelector("text=Sam (2)", { timeout: 25000 });
+  log("✓ online: guest joined, synced, and duplicate name auto-resolved to 'Sam (2)'");
 
   // host can now start (2 players). Host is the first connected player => Master.
   await host.click("text=Start game");
@@ -79,6 +77,13 @@ try {
 
   // master (host) plays the round
   await host.click("text=Play this round");
+  // REGRESSION GUARD: master must enter the spin on their OWN device with no other
+  // activity (bug: secretTarget was a ref mutation, so the master stayed stuck on the
+  // "<name> is getting their angle" waiting screen until an unrelated re-render).
+  await host.waitForTimeout(400);
+  const midSpin = await host.locator("body").innerText();
+  if (/getting their angle/i.test(midSpin)) throw new Error("REGRESSION: master stuck on waiting screen during spin");
+  log("✓ online: master enters spin immediately (no stuck-waiting regression)");
   await host.waitForSelector("text=secret target", { timeout: 12000 }); // spin completes -> clue
   log("✓ online: master saw the spin land + secret target");
   // anti-cheat: while master picks a clue, guest must NOT have the target/bands

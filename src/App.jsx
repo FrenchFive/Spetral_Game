@@ -81,7 +81,7 @@ export default function App() {
               <input value={myName} maxLength={16} onChange={(e) => setMyName(e.target.value)} placeholder="e.g. Five"
                 className="mt-2 w-full px-4 py-3 rounded-xl outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e7ecf3", fontSize: 15 }} />
             </div>
-            <button onClick={() => party.create(myName)} disabled={party.status === "connecting"}
+            <button onClick={() => party.create(myName)} disabled={party.status === "connecting" || !myName.trim()}
               className={`${btn} w-full py-4 flex items-center justify-center gap-2`} style={{ background: "linear-gradient(135deg,#4ade80,#22d3ee)", color: "#06140f", fontWeight: 700, fontSize: 16 }}>
               <Users size={18} /> {party.status === "connecting" ? "Connecting…" : "Create a party"}
             </button>
@@ -89,9 +89,10 @@ export default function App() {
             <div className="flex gap-2">
               <input value={joinCode} maxLength={4} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="CODE"
                 className="flex-1 px-4 py-3 rounded-xl outline-none text-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e7ecf3", fontSize: 20, letterSpacing: "0.3em", fontFamily: "'Space Mono', monospace" }} />
-              <button onClick={() => party.join(joinCode, myName)} disabled={joinCode.trim().length < 4 || party.status === "connecting"}
+              <button onClick={() => party.join(joinCode, myName)} disabled={joinCode.trim().length < 4 || party.status === "connecting" || !myName.trim()}
                 className={`${btn} px-6 flex items-center justify-center gap-2`} style={{ background: "rgba(255,255,255,0.07)", color: "#e7ecf3", fontWeight: 700 }}>Join</button>
             </div>
+            {!myName.trim() && <p className="text-center text-[12px]" style={{ color: "#8a94a6" }}>Enter your name to create or join.</p>}
             {party.error && <p className="text-center text-[13px]" style={{ color: "#fca5a5" }}>{party.error}</p>}
             <p className="text-center text-[12px]" style={{ color: "#5b6675" }}>Peer-to-peer · no account · share the code or link and play from anywhere.</p>
           </div>
