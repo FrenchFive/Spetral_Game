@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Target, Users, Wifi, ArrowRight, ArrowLeft, Lightbulb, Github, Send } from "lucide-react";
-import { btn, suggestUrl } from "./constants";
+import { Target, Users, Wifi, ArrowRight, ArrowLeft, Lightbulb, Github, Send, List, Search } from "lucide-react";
+import { btn, suggestUrl, THEMES } from "./constants";
 
 // Optional: a serverless Worker URL that creates the GitHub issue for the player.
 // Set via the VITE_SUGGEST_ENDPOINT build var. If absent, we fall back to opening
@@ -80,11 +80,17 @@ export default function App() {
             <button onClick={() => setMode("suggest")} className="w-full flex items-center justify-center gap-2 py-2 text-sm" style={{ color: "#8a94a6" }}>
               <Lightbulb size={15} color="#facc15" /> Suggest a Left/Right spectrum
             </button>
+            <button onClick={() => setMode("browse")} className="w-full flex items-center justify-center gap-2 pb-1 text-sm" style={{ color: "#8a94a6" }}>
+              <List size={15} color="#7dd3fc" /> Browse the spectrum deck ({THEMES.length})
+            </button>
           </div>
         )}
 
         {/* SUGGEST A SPECTRUM */}
-        {mode === "suggest" && <SuggestSpectrum onBack={() => setMode("home")} />}
+        {mode === "suggest" && <SuggestSpectrum onBack={() => setMode("home")} onBrowse={() => setMode("browse")} />}
+
+        {/* BROWSE THE DECK */}
+        {mode === "browse" && <BrowseDeck onBack={() => setMode("home")} onSuggest={() => setMode("suggest")} />}
 
         {/* LOCAL */}
         {mode === "local" && <LocalGame onExit={() => setMode("home")} />}
@@ -122,7 +128,50 @@ export default function App() {
   );
 }
 
-function SuggestSpectrum({ onBack }) {
+function BrowseDeck({ onBack, onSuggest }) {
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const list = query
+    ? THEMES.filter(([l, r]) => l.toLowerCase().includes(query) || r.toLowerCase().includes(query))
+    : THEMES;
+  const field = { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e7ecf3", fontSize: 15 };
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm" style={{ color: "#8a94a6" }}><ArrowLeft size={15} /> Back</button>
+      <div>
+        <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: 22 }}>The spectrum deck</div>
+        <p className="text-sm mt-1" style={{ color: "#9aa4b4", lineHeight: 1.5 }}>
+          Every pair of opposites you might play — {THEMES.length} and growing as people suggest more.
+        </p>
+      </div>
+      <div className="relative">
+        <Search size={15} color="#6b7686" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the deck…"
+          className="w-full pl-9 pr-4 py-3 rounded-xl outline-none" style={field} />
+      </div>
+      <div className="text-[11px] tracking-[0.16em] uppercase" style={{ color: "#6b7686" }}>
+        {list.length} {list.length === 1 ? "spectrum" : "spectrums"}{query && ` matching “${q.trim()}”`}
+      </div>
+      <div className="space-y-2">
+        {list.map(([l, r], i) => (
+          <div key={i} className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <span className="flex-1 text-right text-[13px] font-semibold leading-tight" style={{ color: "#7dd3fc" }}>{l}</span>
+            <span className="shrink-0 text-xs" style={{ color: "#5b6675" }}>↔</span>
+            <span className="flex-1 text-left text-[13px] font-semibold leading-tight" style={{ color: "#fdba74" }}>{r}</span>
+          </div>
+        ))}
+        {list.length === 0 && (
+          <p className="text-center text-sm py-4" style={{ color: "#8a94a6" }}>No match — want to be the one to add it?</p>
+        )}
+      </div>
+      <button onClick={onSuggest} className={`${btn} w-full py-3.5 flex items-center justify-center gap-2`} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#e7ecf3", fontWeight: 700 }}>
+        <Lightbulb size={16} color="#facc15" /> Suggest a new spectrum
+      </button>
+    </div>
+  );
+}
+
+function SuggestSpectrum({ onBack, onBrowse }) {
   const [left, setLeft] = useState("");
   const [right, setRight] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | sent | error
@@ -157,6 +206,11 @@ function SuggestSpectrum({ onBack }) {
         <p className="text-sm mt-1" style={{ color: "#9aa4b4", lineHeight: 1.5 }}>
           Two opposing poles for a new round. Good ones get added to the deck for everyone.
         </p>
+        {onBrowse && (
+          <button onClick={onBrowse} className="mt-2 flex items-center gap-1.5 text-sm" style={{ color: "#7dd3fc" }}>
+            <List size={14} /> Browse the {THEMES.length} already in the deck
+          </button>
+        )}
       </div>
       <div className="space-y-2">
         <label className="text-[11px] tracking-[0.18em] uppercase" style={{ color: "#7dd3fc" }}>Left pole</label>

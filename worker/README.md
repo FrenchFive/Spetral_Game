@@ -4,13 +4,17 @@ This optional Worker lets players submit spectrum suggestions **without ever tou
 GitHub**. Until you set it up, the in-app button gracefully falls back to opening a
 GitHub issue, so the game works fine with zero setup.
 
-The Worker holds a GitHub token and creates the suggestion issue for the player. The
-repo's Action then opens a labelled pull request automatically.
+The Worker holds a GitHub token and, for each suggestion, **opens a pull request that
+appends the pair to the `THEMES` deck** in `src/constants.js`. You just review the PR and
+merge it if you like it — no extra steps. (Without the Worker, the in-app button opens a
+prefilled issue and the repo's Action turns it into the same kind of PR.)
 
 ## 1. Create a token (1 min)
 GitHub → **Settings → Developer settings → Fine-grained tokens → Generate new token**
 - Repository access: **Only select repositories → `FrenchFive/Spectrum_Game`**
-- Permissions: **Issues → Read and write**
+- Permissions:
+  - **Contents → Read and write** (to commit the edited file on a branch)
+  - **Pull requests → Read and write** (to open the PR)
 - Generate, copy the token (`github_pat_…`).
 
 ## 2. Create the Worker (2 min, all in the browser)
@@ -29,6 +33,9 @@ Cloudflare dashboard → **Workers & Pages → Create**.
 ## 3. Point the game at it (1 min, no code edit)
 GitHub repo → **Settings → Secrets and variables → Actions → Variables → New variable**:
 - `SUGGEST_ENDPOINT` = your Worker URL.
+
+> ⚠️ Use the **full URL including `https://`** — a value like `spectrum-suggest.…workers.dev`
+> without the scheme is treated as a relative path and the request hits GitHub Pages (405).
 
 Re-run the Pages deploy (push any commit or trigger the workflow). Done — the in-app
 "Suggest a spectrum" button now submits silently and a PR appears for you to merge.
