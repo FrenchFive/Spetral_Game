@@ -106,12 +106,17 @@ try {
   await guest.waitForSelector("text=Locked in!", { timeout: 8000 });
   log("✓ online: guest locked a guess");
 
-  // master holds the reveal button (~1.7s) to fire the reveal
+  // master holds the reveal button to fire the reveal
   await host.waitForSelector("text=Hold to reveal", { timeout: 8000 });
-  const hb = await host.locator("button:has-text('reveal'), button:has-text('Hold to reveal')").first().boundingBox();
+  const hb = await host.locator("button:has-text('Hold to reveal')").first().boundingBox();
   await host.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await host.mouse.down();
-  await host.waitForTimeout(1900);
+  // mid-hold: the locked guest must see the charge building (read-only spectator)
+  await host.waitForTimeout(700);
+  const guestMid = await guest.locator("body").innerText();
+  if (!/Revealing|Almost/.test(guestMid)) throw new Error("CHARGE FAIL: locked guest didn't see reveal charging");
+  log("✓ online: locked guest sees the reveal charge build in real time");
+  await host.waitForTimeout(1200);
   await host.mouse.up();
 
   // both land on reveal; guest sees the now-revealed clue + a cumulative score

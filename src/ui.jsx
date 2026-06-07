@@ -4,7 +4,7 @@ import { btn, PLAYER_COLORS } from "./constants";
 
 // Press-and-hold reveal button: fills, shakes harder as it charges, ramps haptics,
 // drains ~2.5x faster on early release, auto-fires + firm buzz at full charge.
-export function HoldButton({ onComplete, duration = 1600 }) {
+export function HoldButton({ onComplete, onProgress, duration = 1600 }) {
   const [c, setC] = useState(0);
   const cRef = useRef(0), holding = useRef(false), done = useRef(false);
   const raf = useRef(0), last = useRef(0), vacc = useRef(0);
@@ -16,7 +16,7 @@ export function HoldButton({ onComplete, duration = 1600 }) {
     const dt = last.current ? Math.min(48, ts - last.current) : 16; last.current = ts;
     let n = holding.current ? cRef.current + dt / duration : cRef.current - dt / (duration * 0.4);
     n = Math.max(0, Math.min(1, n));
-    cRef.current = n; setC(n);
+    cRef.current = n; setC(n); onProgress && onProgress(n); // broadcast charge to spectators
     if (holding.current) { vacc.current += dt; if (vacc.current > 75) { vacc.current = 0; buzz(Math.round(4 + n * 42)); } }
     if (n >= 1 && !done.current) { done.current = true; holding.current = false; buzz(130); onComplete(); stop(); return; }
     if (holding.current || n > 0) raf.current = requestAnimationFrame(frame); else stop();
@@ -45,6 +45,30 @@ export function HoldButton({ onComplete, duration = 1600 }) {
         <Eye size={18} /> {near ? "Almost…" : c > 0.02 ? "Keep holding…" : "Hold to reveal"}
       </span>
     </button>
+  );
+}
+
+// Read-only mirror of HoldButton — locked guessers watch the Master charge the reveal
+// (same fill / glow / shake) but cannot interact with it.
+export function RevealMeter({ charge = 0 }) {
+  const c = Math.max(0, Math.min(1, charge));
+  const jx = c > 0.04 ? (Math.random() - 0.5) * c * 7 : 0;
+  const jy = c > 0.04 ? (Math.random() - 0.5) * c * 7 : 0;
+  const near = c > 0.8;
+  return (
+    <div className="relative w-full py-4 rounded-xl overflow-hidden select-none font-bold"
+      style={{
+        transform: `translate(${jx}px, ${jy}px) scale(${1 + c * 0.03})`,
+        background: "rgba(255,255,255,0.05)",
+        border: `1px solid rgba(74,222,128,${0.25 + c * 0.6})`,
+        boxShadow: c > 0.02 ? `0 0 ${c * 34}px rgba(74,222,128,${c * 0.55})` : "none",
+        color: c > 0.5 ? "#06140f" : "#e7ecf3", fontSize: 16,
+      }}>
+      <span className="absolute inset-y-0 left-0" style={{ width: `${c * 100}%`, background: "linear-gradient(135deg,#4ade80,#22d3ee)", transition: "none" }} />
+      <span className="relative flex items-center justify-center gap-2" style={{ zIndex: 1 }}>
+        <Eye size={18} /> {near ? "Almost…" : c > 0.02 ? "Revealing…" : "Master is about to reveal…"}
+      </span>
+    </div>
   );
 }
 

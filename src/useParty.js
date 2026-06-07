@@ -57,6 +57,7 @@ export function useParty() {
   const [error, setError] = useState(null);
   const [secretTarget, setSecretTarget] = useState(null); // master-only, drives the spin render
   const [liveNeedles, setLiveNeedles] = useState({});      // pid -> angle, shown to master + locked guessers
+  const [revealCharge, setRevealCharge] = useState(0);     // locked guessers mirror the master's hold charge
 
   const myPid = useRef(persistentPid()).current;
   const roomRef = useRef(null);          // host's authoritative copy
@@ -69,6 +70,7 @@ export function useParty() {
   const amMasterRef = useRef(false);                     // mirror of amMaster for stable handlers
   const broadcastMapRef = useRef(null);                  // master's live-map broadcaster
   const lastLiveSent = useRef(0);                        // throttle outgoing live updates
+  const lastChargeSent = useRef(0);                      // throttle outgoing reveal charge
   const helloRef = useRef({ name: "" });
 
   // ---- host: draw a fresh theme without repeats ----
@@ -190,7 +192,8 @@ export function useParty() {
     const [sendGuess, getGuess] = r.makeAction("guess");
     const [sendLive, getLive] = r.makeAction("live");      // guesser -> master: live needle
     const [sendMap, getMap] = r.makeAction("livemap");      // master -> locked guessers: all needles
-    apiRef.current = { sendRoom, sendAct, sendGuess, sendLive, sendMap, leave: () => r.leave() };
+    const [sendCharge, getCharge] = r.makeAction("charge"); // master -> locked guessers: reveal charge
+    apiRef.current = { sendRoom, sendAct, sendGuess, sendLive, sendMap, sendCharge, leave: () => r.leave() };
 
     // master forwards the aggregate live-needle map ONLY to players who have locked
     // (still-choosing guessers must never see others' needles)
@@ -242,6 +245,8 @@ export function useParty() {
     });
     // locked guessers receive the aggregate map and render everyone's needles
     getMap((data) => { if (data && data.map) setLiveNeedles(data.map); });
+    // locked guessers watch the master's reveal charge build up (read-only)
+    getCharge((data) => { if (data && typeof data.c === "number") setRevealCharge(Math.max(0, Math.min(1, data.c))); });
 
     r.onPeerJoin(() => { sayHello(); });
     r.onPeerLeave((peer) => {
@@ -280,6 +285,7 @@ export function useParty() {
     if (!room || room.status !== "guessing") {
       setLiveNeedles({});
       liveRef.current = { round: -1, map: {} };
+      setRevealCharge(0);
     }
   }, [room?.status, room?.round]);
   // generate the secret when this device becomes master and the spin begins.
@@ -337,6 +343,20 @@ export function useParty() {
     if (apiRef.current && mp) { try { apiRef.current.sendLive({ pid: myPid, angle }, mp); } catch (e) {} }
   }, [room, myPid]);
 
+  // master: stream the reveal-charge to locked guessers so they feel the tension build.
+  // Always send the 0 and 1 endpoints so their meter starts/finishes cleanly.
+  const pushCharge = useCallback((c) => {
+    const r = roomRef.current || room; if (!r || !apiRef.current) return;
+    const now = Date.now();
+    const edge = c <= 0.001 || c >= 0.999;
+    if (!edge && now - lastChargeSent.current < 45) return;
+    lastChargeSent.current = now;
+    Object.keys(guessRef.current.byPid || {}).forEach((pid) => {
+      const peer = r.players.find((p) => p.pid === pid)?.peerId;
+      if (peer) { try { apiRef.current.sendCharge({ c }, peer); } catch (e) {} }
+    });
+  }, [room]);
+
   // master: compute scores from collected guesses + secret target, then reveal
   const revealNow = useCallback(() => {
     const r = roomRef.current || room; if (!r) return;
@@ -353,12 +373,12 @@ export function useParty() {
     isHost: room ? room.hostPid === myPid : false,
     amMaster: !!amMaster,
     secretTarget: amMaster ? secretTarget : null,
-    liveNeedles,
+    liveNeedles, revealCharge,
     lockedPids: guessRef.current.byPid ? Object.keys(guessRef.current.byPid) : [],
     localLocked: guessRef.current.byPid ? Object.keys(guessRef.current.byPid).length : 0,
     savedName,
     create, createWithCode, join, leave,
-    startGame, voteSkip, votePlay, finishSpin, submitClue, submitGuess, pushLive,
+    startGame, voteSkip, votePlay, finishSpin, submitClue, submitGuess, pushLive, pushCharge,
     revealNow, nextRound, endGame, playAgain, reassignMaster,
   };
 }

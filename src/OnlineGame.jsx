@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Eye, Lock, ArrowRight, Crown, RotateCcw, SkipForward, Flag, ArrowLeft, Copy, Check, Share2, Users, Wifi, WifiOff } from "lucide-react";
 import { PLAYER_COLORS, btn } from "./constants";
 import { DialBoard } from "./Dial";
-import { HoldButton, Confetti } from "./ui";
+import { HoldButton, Confetti, RevealMeter } from "./ui";
 
 // master-only: spin the needle ~3 loops, decelerate, land on the secret target
 function SpinDial({ theme, target, onDone }) {
@@ -238,7 +238,7 @@ export default function OnlineGame({ party, onExit }) {
           </p>
           {allLocked ? (
             <>
-              <HoldButton onComplete={party.revealNow} />
+              <HoldButton onComplete={party.revealNow} onProgress={party.pushCharge} />
               <p className="text-center text-[12px] -mt-1" style={{ color: "#5b6675" }}>everyone's in — hold to reveal</p>
             </>
           ) : (
@@ -260,8 +260,9 @@ export default function OnlineGame({ party, onExit }) {
           <DialBoard theme={room.theme} value={needle} target={null} markers={liveMarkers} onChange={undefined} />
           <Legend />
           <p className="text-center text-sm" style={{ color: "#86efac" }}>
-            Locked in! Watch the others move — waiting for reveal · {room.lockedCount}/{guesserCount}
+            Locked in! Watch the others move — {room.lockedCount}/{guesserCount} in
           </p>
+          <RevealMeter charge={party.revealCharge} />
         </div>
       );
     }
