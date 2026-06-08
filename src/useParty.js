@@ -15,6 +15,8 @@ const APP_ID = "https://spectrum-game-7006e-default-rtdb.europe-west1.firebaseda
 const TURN_USER = "d201079d6ff5ad65f11444b4";
 const TURN_CRED = "7L/0DoWyo+e2FtBw";
 const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
   { urls: "stun:stun.relay.metered.ca:80" },
   { urls: "turn:global.relay.metered.ca:80", username: TURN_USER, credential: TURN_CRED },
   { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: TURN_USER, credential: TURN_CRED },
