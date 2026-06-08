@@ -15,7 +15,23 @@ const RELAY_URLS = [
   "wss://relay.primal.net",
   "wss://nostr.mom",
 ];
-const ROOM_CONFIG = { appId: APP_ID, relayUrls: RELAY_URLS, relayRedundancy: 4 };
+// STUN finds public IPs; TURN relays traffic when no direct path exists (WiFi
+// client isolation, symmetric NAT, Firefox resistFingerprinting). Without TURN,
+// peers on the same network often can't connect at all.
+const ICE_SERVERS = [
+  { urls: "stun:stun.l.google.com:19302" },
+  {
+    urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+];
+const ROOM_CONFIG = {
+  appId: APP_ID,
+  relayUrls: RELAY_URLS,
+  relayRedundancy: 4,
+  rtcConfig: { iceServers: ICE_SERVERS },
+};
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no O/0/I/1
 export const genCode = () => Array.from({ length: 4 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join("");
 
