@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-// Trystero strategy: nostr uses free public relays for signaling, then WebRTC
-// connects phones directly. No backend, no keys. To swap reliability strategy
-// just change this import to 'trystero/mqtt' or 'trystero/torrent' — same API.
-import { joinRoom, selfId } from "trystero/nostr";
+// Trystero strategy: firebase uses our own Realtime Database for signaling (peer
+// introduction), then WebRTC connects players directly. We control the DB, so —
+// unlike the public Nostr relays — it can't vanish under us. Gameplay is P2P.
+import { joinRoom, selfId } from "trystero/firebase";
 import { THEMES, shuffle, newTarget, scoreFor, DEFAULT_DIFFICULTY, DIFFICULTIES } from "./constants";
 
-const APP_ID = "spectrum-lr-game-v1";
-// Curated, reliable public Nostr relays for signaling (avoids dead defaults).
-// Trystero only uses these to introduce peers; gameplay is direct WebRTC.
-const RELAY_URLS = [
-  "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://relay.nostr.band",
-  "wss://relay.primal.net",
-  "wss://nostr.mom",
-];
+// For the firebase strategy, appId MUST be the Realtime Database URL.
+const APP_ID = "https://spectrum-game-7006e-default-rtdb.europe-west1.firebasedatabase.app";
 // STUN finds public IPs; TURN relays traffic when no direct path exists (WiFi
 // client isolation, symmetric NAT, Firefox resistFingerprinting). Without TURN,
 // peers on the same network often can't connect at all.
@@ -28,8 +20,6 @@ const ICE_SERVERS = [
 ];
 const ROOM_CONFIG = {
   appId: APP_ID,
-  relayUrls: RELAY_URLS,
-  relayRedundancy: 4,
   rtcConfig: { iceServers: ICE_SERVERS },
 };
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no O/0/I/1
