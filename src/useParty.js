@@ -9,14 +9,17 @@ import { THEMES, shuffle, newTarget, scoreFor, DEFAULT_DIFFICULTY, DIFFICULTIES 
 const APP_ID = "https://spectrum-game-7006e-default-rtdb.europe-west1.firebasedatabase.app";
 // STUN finds public IPs; TURN relays traffic when no direct path exists (WiFi
 // client isolation, symmetric NAT, Firefox resistFingerprinting). Without TURN,
-// peers on the same network often can't connect at all.
+// peers on the same network often can't connect at all. Multiple transports
+// (UDP :80, TCP :80, UDP :443, TLS/TCP :443) maximize traversal of locked-down
+// networks. Credentials are Metered's free tier (50 GB/mo).
+const TURN_USER = "d201079d6ff5ad65f11444b4";
+const TURN_CRED = "7L/0DoWyo+e2FtBw";
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  {
-    urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
+  { urls: "stun:stun.relay.metered.ca:80" },
+  { urls: "turn:global.relay.metered.ca:80", username: TURN_USER, credential: TURN_CRED },
+  { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: TURN_USER, credential: TURN_CRED },
+  { urls: "turn:global.relay.metered.ca:443", username: TURN_USER, credential: TURN_CRED },
+  { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: TURN_USER, credential: TURN_CRED },
 ];
 const ROOM_CONFIG = {
   appId: APP_ID,
