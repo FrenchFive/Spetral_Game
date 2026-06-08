@@ -90,11 +90,16 @@ export default function LocalGame({ onExit }) {
   const curGuesser = players[guessOrder[guessPtr]];
   const stage = useRevealStage(phase === "reveal" && revealed);
 
+  // Spin once per round when the Master takes over. Deliberately NOT keyed on `target`:
+  // in cheat mode the Master drags the target afterwards, and re-running here would
+  // restart the spin on every drag (an endless loop). We read target via a ref instead.
+  const targetSpinRef = useRef(target);
+  targetSpinRef.current = target;
   useEffect(() => {
     if (phase !== "master") return;
     setSpinning(true);
     const T = 2800;
-    const travel = 3 * 360 + target;
+    const travel = 3 * 360 + targetSpinRef.current;
     const tri = (x) => { const m = ((x % 360) + 360) % 360; return m <= 180 ? m : 360 - m; };
     const start = performance.now();
     const tick = (now) => {
@@ -102,11 +107,11 @@ export default function LocalGame({ onExit }) {
       const ease = 1 - Math.pow(1 - p, 3);
       setSpinAngle(tri(ease * travel));
       if (p < 1) spinRaf.current = requestAnimationFrame(tick);
-      else { setSpinAngle(target); setSpinning(false); }
+      else { setSpinAngle(targetSpinRef.current); setSpinning(false); }
     };
     spinRaf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(spinRaf.current);
-  }, [phase, round, target]);
+  }, [phase, round]);
 
   return (
     <>

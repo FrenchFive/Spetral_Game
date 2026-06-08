@@ -175,17 +175,20 @@ export const B4 = 5, B3 = 15, B2 = 25; // five equal 10° bands: 2-3-4-3-2
 // forgiving), Hard shrinks every section by 3° (tighter). Standard is the base 2-3-4-3-2.
 // Chosen once when the game is created and applied to scoring + the dial rendering.
 export const DIFFICULTIES = [
-  { id: "easy", label: "Easy", delta: 3, blurb: "+3° per zone", tone: "#4ade80" },
+  { id: "easy", label: "Easy", delta: 3, blurb: "Wider zones", tone: "#4ade80" },
   { id: "standard", label: "Standard", delta: 0, blurb: "Classic", tone: "#67e8f9" },
-  { id: "hard", label: "Hard", delta: -3, blurb: "−3° per zone", tone: "#f87171" },
+  { id: "hard", label: "Hard", delta: -3, blurb: "Tighter zones", tone: "#f87171" },
 ];
 export const difficultyMeta = (id) => DIFFICULTIES.find((d) => d.id === id) || DIFFICULTIES[1];
 export const DEFAULT_DIFFICULTY = "standard";
 const deltaFor = (id) => (DIFFICULTIES.find((d) => d.id === id)?.delta ?? 0);
 // Resolve a difficulty id to its three band edges (half-widths from the target).
+// delta is applied cumulatively so EVERY zone grows/shrinks, not just the bullseye:
+// the 4-zone shifts by 1×, the 3-zone by 2×, the 2-zone by 3× — keeping each ring
+// 3° wider (easy) or tighter (hard) than standard.
 export const bandsFor = (id = DEFAULT_DIFFICULTY) => {
   const d = deltaFor(id);
-  return { b4: B4 + d, b3: B3 + d, b2: B2 + d };
+  return { b4: B4 + d, b3: B3 + 2 * d, b2: B2 + 3 * d };
 };
 
 export const clampA = (a) => Math.max(0, Math.min(180, a));
